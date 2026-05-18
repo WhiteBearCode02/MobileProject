@@ -52,7 +52,7 @@ class FoodImageClassifier(private val context: Context) {
      * [가산점 요소 - 비동기 코루틴 처리]
      * 이미지 URI를 넘겨받아 백그라운드 스레드(Dispatchers.Default)에서 연산한 뒤 해시태그 문자열을 반환합니다.
      */
-    async fun classifyImageAsync(imageUri: Uri): String = withContext(Dispatchers.Default) {
+    suspend fun classifyImageAsync(imageUri: Uri): String = withContext(Dispatchers.Default) {
         // 이미지를 분석하는 대규모 행렬 연산은 CPU 사용량이 높으므로 Default 스레드 풀로 강제 전환
         if (imageClassifier == null) {
             return@withContext "#여행 #일상"
