@@ -46,4 +46,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    // 코루틴 비동기 처리를 위한 핵심 라이브러리 (가산점 필수 요소)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // 온디바이스 AI 구현을 위한 TensorFlow Lite Task Vision 라이브러리
+    implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
 }
