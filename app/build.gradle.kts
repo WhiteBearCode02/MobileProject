@@ -3,9 +3,11 @@ import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.android.application)
-    // [수정]: 특정 버전을 명시(version "1.9.20")하면 프로젝트 전체 설정과 충돌하므로,
-    // 중앙 버전 카탈로그(libs.versions.toml)에 정의된 버전을 사용하도록 alias로 변경합니다.
     alias(libs.plugins.kotlin.android)
+
+    // [구글 공식 API Key 자동 은닉/주입 보안 플러그인 추가]
+    // local.properties 내부의 GOOGLE_MAPS_API_KEY 변수를 추적하여 Manifest에 자동 바인딩합니다.
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin") version "2.0.1"
 }
 
 android {
@@ -20,20 +22,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // [오류 수정]: java.util.Properties와 java.io.FileInputStream를 위에서 import하여 사용
-        val properties = Properties()
-        val propertiesFile = project.rootProject.file("local.properties")
-
-        if (propertiesFile.exists()) {
-            val inputStream = FileInputStream(propertiesFile)
-            properties.load(inputStream)
-            inputStream.close()
-        }
-
-        // 카카오 네이티브 앱 키 설정
-        val kakaoKey = properties.getProperty("kakao_native_app_key") ?: ""
-        manifestPlaceholders["KAKAO_MAP_KEY"] = kakaoKey
     }
 
     buildTypes {
@@ -52,6 +40,11 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    // [인프라 설정]: XML 레이아웃 객체 참조 무결성 및 고속 결합을 위해 뷰바인딩 컴포넌트 활성화
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -64,10 +57,12 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    // 코루틴 비동기 처리
+    // 코루틴 비동기 처리 패키지
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    // TensorFlow Lite
+
+    // TensorFlow Lite 온디바이스 컴퓨터 비전 모델 추론 라이브러리
     implementation("org.tensorflow:tensorflow-lite-task-vision:0.4.4")
-    // 카카오 지도 v2 SDK
-    implementation("com.kakao.vectormap:android:2.9.5")
+
+    // [구글 지도 SDK 의존성 추가]: 구글 맵 렌더링 및 하드웨어 그래픽 가속을 위한 핵심 모바일 모듈
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 }

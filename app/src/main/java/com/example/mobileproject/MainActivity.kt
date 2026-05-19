@@ -21,6 +21,18 @@ class MainActivity : AppCompatActivity() {
 
         bottomNavigation = findViewById(R.id.bottom_navigation)
 
+        try {
+            val info = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNATURES)
+            for (signature in info.signatures) {
+                val md = java.security.MessageDigest.getInstance("SHA")
+                md.update(signature.toByteArray())
+                val keyHash = android.util.Base64.encodeToString(md.digest(), android.util.Base64.DEFAULT).trim()
+                android.util.Log.d("KakaoKeyHash", "==== 내 진짜 키 해시: $keyHash ====")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("KakaoKeyHash", "추출 실패", e)
+        }
+
         // 앱 처음 실행 시 기본 탭을 HomeFragment로 지정 및 초기 컨텍스트 설정
         if (savedInstanceState == null) {
             switchFragment(HomeFragment(), "Home")
