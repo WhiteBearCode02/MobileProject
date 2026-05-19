@@ -17,27 +17,25 @@ import com.example.mobileproject.R
 import com.example.mobileproject.data.DBHelper
 import com.example.mobileproject.data.TravelRecord
 import com.example.mobileproject.utils.FoodImageClassifier
-import com.kakao.vectormap.KakaoMap
-import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.MapView
-import com.kakao.vectormap.LatLng
-import com.kakao.vectormap.camera.CameraUpdateFactory
-import com.kakao.vectormap.label.LabelOptions
-import com.kakao.vectormap.label.LabelStyle
-import com.kakao.vectormap.label.LabelStyles
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.coroutines.launch
 
 /**
- * 여행 기록을 신규 작성하거나 수정하며, 카카오 지도 v2 시각화 및 AI 해시태그 분석을 통제하는 액티비티
+ * [EditActivity]: 여행 기록을 신규 작성하거나 수정하며, Google Maps SDK 시각화 및 On-Device TFLite AI 추론을 통제하는 컨트롤러.
+ * XML 레이아웃 구조체 명세 개편에 따라 mapFragment 인스턴스 참조 무결성을 보장하도록 정합함.
  */
-class EditActivity : AppCompatActivity() {
+class EditActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var etPlace: EditText
     private lateinit var etDate: EditText
     private lateinit var etMemo: EditText
     private lateinit var ivSelectedPhoto: ImageView
     private lateinit var tvAiHashtagResult: TextView
-    private lateinit var kakaoMapView: MapView
     private lateinit var btnSelectPhoto: Button
     private lateinit var btnSave: Button
 
@@ -46,9 +44,11 @@ class EditActivity : AppCompatActivity() {
 
     private var selectedPhotoUri: Uri? = null
     private var generatedHashtag: String = ""
-    private var currentKakaoMap: KakaoMap? = null
 
-    // 최신 Activity Result API를 이용한 갤러리/카메라 이미지 풀링 계약 구조
+    // 비동기 콜백을 통해 수급된 구글 맵 핵심 엔진 컨트롤러 인스턴스 격리 참조
+    private var currentGoogleMap: GoogleMap? = null
+
+    // 최신 Activity Result API를 이용한 갤러리 이미지 풀링 계약 구조
     private val photoPickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -73,7 +73,7 @@ class EditActivity : AppCompatActivity() {
         imageClassifier = FoodImageClassifier(this)
 
         initViews()
-        setupKakaoMap()
+        setupGoogleMap()
         setupListeners()
     }
 
@@ -83,43 +83,51 @@ class EditActivity : AppCompatActivity() {
         etMemo = findViewById(R.id.etMemo)
         ivSelectedPhoto = findViewById(R.id.ivSelectedPhoto)
         tvAiHashtagResult = findViewById(R.id.tvAiHashtagResult)
-        kakaoMapView = findViewById(R.id.kakaoMapView)
         btnSelectPhoto = findViewById(R.id.btnSelectPhoto)
         btnSave = findViewById(R.id.btnSave)
     }
 
     /**
-     * 카카오 맵 v2 정식 패키지 규격에 따른 렌더링 컨텍스트 가동
+     * [setupGoogleMap]: XML 레이아웃 컨텍스트 내부의 SupportMapFragment 노드를 동적 파싱하여,
+     * 구글 클라우드 보안 게이트웨이 인증 스레드 백엔드 파이프라인을 가동하는 인프라 셋업 메서드.
      */
-    private fun setupKakaoMap() {
-        kakaoMapView.start(object : KakaoMapReadyCallback() {
-            override fun onMapReady(kakaoMap: KakaoMap) {
-                currentKakaoMap = kakaoMap
+    private fun setupGoogleMap() {
+        // [참조 결함 교정 완료]: activity_edit.xml에 새로 정의된 mapFragment ID 자원을 안전하게 추출
+        val mapFragment = supportFragmentManager.findFragmentById(R.id.mapFragment) as SupportMapFragment
 
-                // 기본 뷰포트를 학부 연구실 및 캡스톤 무대인 '순천향대학교' 좌표로 정밀 셋업
-                val soonchunhyang = LatLng.from(36.7691, 126.9348)
-                moveMapToLocation(soonchunhyang, "순천향대학교")
-            }
-        })
+        // 비동기 옵저버 바인딩: 구글 인증 및 렌더링 컨텍스트가 가용 상태에 도달하면 이 클래스의 onMapReady 루틴 트리거
+        mapFragment.getMapAsync(this)
+    }
+
+    /**
+     * [onMapReady]: 구글 클라우드 인증 플랫폼을 통과하고 벡터 지오 타일 데이터 수급이 안전하게 완료되면 호출되는 비동기 라이프사이클 콜백.
+     */
+    override fun onMapReady(googleMap: GoogleMap) {
+        this.currentGoogleMap = googleMap
+
+        // 순천향대학교 정밀 위경도 데이터 할당
+        val soonchunhyang = LatLng(36.7691, 126.9348)
+
+        // 구글 맵 전용 렌더링 파이프라인으로 지리 좌표 토스
+        moveMapToLocation(soonchunhyang, "순천향대학교")
     }
 
     /**
      * 특정 지리 좌표로 지도를 천천히 전이시키고 가산점용 단일 마커를 렌더링하는 메서드
      */
     private fun moveMapToLocation(latLng: LatLng, title: String) {
-        currentKakaoMap?.let { map ->
-            // [오류 수정]: 카카오 지도 v2 명세상 줌 레벨 파라미터는 Float 형식이 아닌 정수형(Int)인 15를 취해야 컴파일러 에러가 해결됩니다.
-            map.moveCamera(CameraUpdateFactory.newCenterPosition(latLng, 15))
+        currentGoogleMap?.let { map ->
+            // 마커 옵션 빌드: 구글 표준 레이아웃 컴포넌트에 바인딩할 마커 명세 가공
+            val markerOptions = MarkerOptions()
+                .position(latLng)
+                .title(title)
+                .snippet("기말 프로젝트 여행 기록 장소")
 
-            // 디폴트 핀 아이콘 스타일 빌드업
-            // [오류 수정]: 카카오 맵 v2의 스타일 레이어 매커니즘 구조 정합성을 위해 호환 핀 리소스를 생성 바인딩합니다.
-            val style = map.labelManager?.addLabelStyles(
-                LabelStyles.from(LabelStyle.from(android.R.drawable.ic_dialog_map))
-            )
-            val options = LabelOptions.from(latLng).setStyles(style).setTexts(title)
+            // 1. 구글 맵 그래픽 엔진 캔버스 단에 랜드마크 핀 마커 추가
+            map.addMarker(markerOptions)
 
-            // 지도 최상단 기본 레이어에 랜드마크 라벨(마커) 추가
-            map.labelManager?.layer?.addLabel(options)
+            // 2. 카메라Update 가속 팩토리를 구동하여 지정 위경도로 뷰포트를 이동시키고, 정밀 확대 스펙인 15f를 정합 수행
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
         }
     }
 

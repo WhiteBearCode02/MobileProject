@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="12dp"
+    android:layout_marginHorizontal="8dp"
     android:layout_marginVertical="6dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="4dp">
@@ -12,54 +12,35 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <ImageView
-            android:id="@+id/ivThumbnail"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ic_launcher_background"
-            android:contentDescription="여행지 사진" />
-
-        <LinearLayout
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/tvItemPlace"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="16dp"
-            android:orientation="vertical"
-            android:layout_gravity="center_vertical">
+            android:text="여행지명"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#111111" />
 
-            <TextView
-                android:id="@+id/tvPlace"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="순천향대학교"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="#222222" />
+        <TextView
+            android:id="@+id/tvItemDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="2026-05-19"
+            android:textSize="14sp"
+            android:textColor="#666666" />
 
-            <TextView
-                android:id="@+id/tvDate"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_topMargin="4dp"
-                android:text="2026-06-01"
-                android:textSize="14sp"
-                android:textColor="#666666" />
-
-            <TextView
-                android:id="@+id/tvHashtag"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_topMargin="6dp"
-                android:text="#학식 #맛집"
-                android:textSize="13sp"
-                android:textStyle="italic"
-                android:textColor="#007AFF" />
-
-        </LinearLayout>
+        <TextView
+            android:id="@+id/tvItemMemo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="그곳에서 찍은 TFLite AI 분석 음식 사진과 아름다운 추억의 기록"
+            android:textSize="15sp"
+            android:textColor="#444444" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>
