@@ -9,7 +9,8 @@ import com.example.mobileproject.ui.HomeFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
- * 하단 네비게이션바를 통해 2개의 프래그먼트 탭 전환을 통제하는 메인 액티비티
+ * [MainActivity]: 하단 네비게이션바를 통해 2개의 프래그먼트(Home, Dashboard) 탭 전환 및
+ * 백스택 트랜잭션을 소프트웨어 공학적으로 통제하는 최상위 엔트리 포인트 액티비티 계층.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -21,24 +22,14 @@ class MainActivity : AppCompatActivity() {
 
         bottomNavigation = findViewById(R.id.bottom_navigation)
 
-        try {
-            val info = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNATURES)
-            for (signature in info.signatures) {
-                val md = java.security.MessageDigest.getInstance("SHA")
-                md.update(signature.toByteArray())
-                val keyHash = android.util.Base64.encodeToString(md.digest(), android.util.Base64.DEFAULT).trim()
-                android.util.Log.d("KakaoKeyHash", "==== 내 진짜 키 해시: $keyHash ====")
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("KakaoKeyHash", "추출 실패", e)
-        }
+        // [인프라 청정화]: 구글 맵 플랫폼 선회에 따라 무의미해진 카카오 서명(Signatures) 복잡 파싱 루틴을 완전히 청소하여 Null 상호 충돌 결함을 원천 타파합니다.
 
-        // 앱 처음 실행 시 기본 탭을 HomeFragment로 지정 및 초기 컨텍스트 설정
+        // 앱 최초 실행 시 가상 메모리 스냅샷(savedInstanceState) 유무를 검증하여 디폴트 탭으로 HomeFragment를 생성 적재
         if (savedInstanceState == null) {
             switchFragment(HomeFragment(), "Home")
         }
 
-        // 하단 탭 버튼 클릭 리스너 연결
+        // 하단 탭 버튼 클릭 리스너 연결 및 분기 제어 알고리즘 수립
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -53,54 +44,56 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 안드로이드 최신 규격(API 33+)에 맞춘 백스택 제어 전용 콜백 등록 (onBackPressed 대체)
+        // 안드로이드 최신 보안 및 가용성 규격(API 33+)에 맞춘 백스택 제어 전용 콜백 등록 (Legacy onBackPressed 대체)
         setupBackPressedDispatcher()
     }
 
     /**
-     * [요구사항 반영] 프래그먼트를 트랜잭션으로 교체하고, 백스택 트래킹을 수행합니다.
+     * [switchFragment]: 프래그먼트 매니저를 통해 컴포넌트를 원자적 트랜잭션으로 교체하고, 교수님 필수 요건인 백스택 트래킹을 수행합니다.
+     * @param fragment 교체 전이할 서브 프래그먼트 인스턴스
+     * @param tag 백스택 프레임 식별용 정적 문자열 기호
      */
     private fun switchFragment(fragment: Fragment, tag: String) {
         val fragmentManager = supportFragmentManager
 
-        // 스택에 이미 쌓여있는 동일 프래그먼트가 있다면 중복 생성을 방지하기 위해 꺼내옴
+        // 스택 메모리에 이미 컨텍스트가 잔존하는 프래그먼트가 있다면 중복 인스턴스 생성을 억제하기 위해 탐색 추출
         val currentFragment = fragmentManager.findFragmentByTag(tag)
         val transaction = fragmentManager.beginTransaction()
 
-        // 프래그먼트 교체 연산 실행
+        // 독립형 fragment_container 뷰포트 레이어 상에서 뷰 교체 런타임 가동
         transaction.replace(R.id.fragment_container, currentFragment ?: fragment, tag)
 
-        // 교수님 필수 요구사항: 백스택 관리를 포함하여 뒤로가기 시 이전 탭으로 전이되도록 유도
+        // [과제 필수 요구사항]: 백스택 트리거 설계를 포함하여 사용자가 하드웨어 뒤로가기 클릭 시 이전 활성 탭으로 안전 전이되도록 통제
         transaction.addToBackStack(tag)
         transaction.commit()
     }
 
     /**
-     * 최신 안드로이드 컴포넌트 환경에 맞는 백스택 콜백 처리 헬퍼 메서드
+     * [setupBackPressedDispatcher]: Jetpack 컴포넌트 아키텍처에 부합하는 독립형 백스택 콜백 처리 디스패처 가동 알고리즘.
      */
     private fun setupBackPressedDispatcher() {
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val fragmentManager = supportFragmentManager
 
-                // 백스택에 프래그먼트 내역이 2개 이상 남아있다면 이전 탭으로 뒤로가기 실행
+                // 백스택 세션에 적재된 프래그먼트 컨텍스트 레코드가 2개 이상 존재할 때 이전 탭 뷰포트로 안전 복원(Pop)
                 if (fragmentManager.backStackEntryCount > 1) {
                     fragmentManager.popBackStackImmediate()
-                    // 바뀐 프래그먼트 상태에 맞춰 하단 탭 아이콘 하이라이팅 동기화
+                    // 전이된 메모리 프래그먼트 상태에 호응하도록 하단 네비게이션 선택 탭 인덱스 동기화 갱신
                     updateBottomNavSelection()
                 } else {
-                    // 더 이상 돌아갈 백스택이 없다면 이 콜백을 비활성화하고 시스템 뒤로가기로 앱 종료
+                    // 더 이상 전이할 백스택 리소스가 부재할 경우 본 옵저버 콜백 인터셉터를 해제하고 물리 OS 시스템 단으로 종료 프로토콜 토스
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
                 }
             }
         }
-        // 액티비티의 수명 주기에 링크하여 콜백을 디스패처에 등록
+        // 액티비티 컨텍스트 수명 주기(Lifecycle)와 결합하여 디스패처 인프라에 안전하게 콜백 레지스트리 등록
         onBackPressedDispatcher.addCallback(this, callback)
     }
 
     /**
-     * 사용자가 백스택 뒤로가기를 수행했을 때 현재 화면에 맞게 하단 아이콘 불빛을 맞춰주는 메서드
+     * [updateBottomNavSelection]: 하드웨어 백스택 뒤로가기 시 가상 파일 시스템 뷰포트에 렌더링된 객체를 추론하여 하단 탭 하이라이트를 보간하는 메서드.
      */
     private fun updateBottomNavSelection() {
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
