@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -85,6 +86,14 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
             isEditMode = true
         }
 
+        // [뒤로 가기 버튼 인프라 구현]: 액션바에 내장된 뒤로 가기 화살표 에셋을 동적 활성화하고 타이틀을 정합합니다.
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        if (isEditMode) {
+            supportActionBar?.title = "여행 기록 상세 조회"
+        } else {
+            supportActionBar?.title = "새 여행 기록 추가"
+        }
+
         setupGoogleMap()
         setupListeners()
     }
@@ -102,6 +111,17 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
         if (isEditMode) {
             btnSave.text = "기록 수정하기"
         }
+    }
+
+    /**
+     * [onOptionsItemSelected]: 상단 액션바의 뒤로 가기 홈 화살표 버튼이 눌렸을 때 시스템 이벤트를 캐치하여 복원 전이합니다.
+     */
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) {
+            finish() // 현재 액티비티를 파괴하고 상위 백스택(MainActivity)으로 안전 복귀
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     /**
@@ -130,7 +150,7 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
             // 로컬 SQLite 저장소 코어에서 고유 식별 번호에 바인딩된 단일 튜플 역직렬화 추출
             val record = dbHelper.getRecordById(recordNo)
             if (record != null) {
-                // 원시 컴포넌트 텍스트 뷰포트에 기존 데이터 롤셋 인입
+                // [오류 완전 수정]: TravelRecord 구조체의 실제 명세인 .memo 가변 속성을 바인딩하도록 정합 완료했습니다.
                 etPlace.setText(record.place)
                 etDate.setText(record.visitDate)
                 etMemo.setText(record.memo)
