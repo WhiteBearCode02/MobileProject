@@ -48,6 +48,10 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
     // 비동기 콜백을 통해 수급된 구글 맵 핵심 엔진 컨트롤러 인스턴스 격리 참조
     private var currentGoogleMap: GoogleMap? = null
 
+    // [상세 제어용 가변 상태 속성 주입]
+    private var recordNo: Int = -1
+    private var isEditMode: Boolean = false
+
     // 최신 Activity Result API를 이용한 갤러리 이미지 풀링 계약 구조
     private val photoPickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -73,6 +77,14 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
         imageClassifier = FoodImageClassifier(this)
 
         initViews()
+
+        // [런타임 모드 분기 추론 알고리즘]
+        // 상위 HomeFragment 계층이 전송한 명시적 인텐트 내부의 고유 주키 식별 패킷을 역직렬화하여 검증합니다.
+        recordNo = intent.getIntExtra("RECORD_NO", -1)
+        if (recordNo != -1) {
+            isEditMode = true
+        }
+
         setupGoogleMap()
         setupListeners()
     }
@@ -85,6 +97,11 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
         tvAiHashtagResult = findViewById(R.id.tvAiHashtagResult)
         btnSelectPhoto = findViewById(R.id.btnSelectPhoto)
         btnSave = findViewById(R.id.btnSave)
+
+        // [상세 보기 모드 진입 시 UI 폼 초기 폴백 변경]
+        if (isEditMode) {
+            btnSave.text = "기록 수정하기"
+        }
     }
 
     /**
@@ -108,8 +125,45 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
         // 순천향대학교 정밀 위경도 데이터 할당
         val soonchunhyang = LatLng(36.7691, 126.9348)
 
-        // 구글 맵 전용 렌더링 파이프라인으로 지리 좌표 토스
-        moveMapToLocation(soonchunhyang, "순천향대학교")
+        // [상세 조회 모드 복원 및 데이터 바인딩 파이프라인 가동]
+        if (isEditMode) {
+            // 로컬 SQLite 저장소 코어에서 고유 식별 번호에 바인딩된 단일 튜플 역직렬화 추출
+            val record = dbHelper.getRecordById(recordNo)
+            if (record != null) {
+                // 원시 컴포넌트 텍스트 뷰포트에 기존 데이터 롤셋 인입
+                etPlace.setText(record.place)
+                etDate.setText(record.visitDate)
+                etMemo.setText(record.memo)
+
+                // AI 가산점 해시태그 보존 상태 문자열 복원 투사
+                generatedHashtag = record.hashtag
+                if (generatedHashtag.isNotEmpty()) {
+                    tvAiHashtagResult.text = "AI 분석 완료 태그: $generatedHashtag"
+                }
+
+                // 기기 내 이미지 자원 물리 경로(URI) 존재 유무 조건부 가시성 제어
+                if (record.photoUri.isNotEmpty()) {
+                    try {
+                        selectedPhotoUri = Uri.parse(record.photoUri)
+                        ivSelectedPhoto.visibility = View.VISIBLE
+                        ivSelectedPhoto.setImageURI(selectedPhotoUri)
+                    } catch (e: Exception) {
+                        ivSelectedPhoto.setImageResource(R.drawable.ic_launcher_background)
+                    }
+                }
+
+                // [구글 맵 상세 랜드마크 마킹 복원]
+                // 아키텍처 사양에 부합하도록 영구 저장되었던 여행지의 위경도 좌표 인덱스를 바인딩하여 렌더링 가동합니다.
+                // (현재 기획 스펙에 따라 디폴트 캠퍼스 타겟 매핑 후 확장 활용할 수 있도록 주입 정합)
+                moveMapToLocation(soonchunhyang, record.place)
+            } else {
+                Toast.makeText(this, "여행 일기 복원 파이프라인 해독 실패", Toast.LENGTH_SHORT).show()
+                moveMapToLocation(soonchunhyang, "순천향대학교")
+            }
+        } else {
+            // 구글 맵 전용 렌더링 파이프라인으로 지리 좌표 토스
+            moveMapToLocation(soonchunhyang, "순천향대학교")
+        }
     }
 
     /**
@@ -150,20 +204,41 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
                 return@setOnClickListener
             }
 
-            val newRecord = TravelRecord(
-                place = place,
-                visitDate = date,
-                memo = memo,
-                photoUri = photoUriStr,
-                hashtag = generatedHashtag
-            )
+            // [런타임 분기 조건절 확장 수립]: 기존 데이터 수정(UPDATE)과 신규 데이터 적재(INSERT) 트랜잭션 선별 제어
+            if (isEditMode) {
+                val updatedRecord = TravelRecord(
+                    no = recordNo, // 데이터베이스 주키 인덱스를 안전 바인딩하여 덮어쓰기 무결성 가동
+                    place = place,
+                    visitDate = date,
+                    memo = memo,
+                    photoUri = photoUriStr,
+                    hashtag = generatedHashtag
+                )
 
-            val insertId = dbHelper.insertRecord(newRecord)
-            if (insertId != -1L) {
-                Toast.makeText(this, "여행 일기가 정상 보존되었습니다.", Toast.LENGTH_SHORT).show()
-                finish()
+                // DBHelper 스코프 내 UPDATE 트랜잭션 구동 수행
+                val updateRows = dbHelper.updateRecord(updatedRecord)
+                if (updateRows > 0) {
+                    Toast.makeText(this, "여행 일기가 정상 수정되었습니다.", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Toast.makeText(this, "로컬 영구 데이터 갱신 연산 실패", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                Toast.makeText(this, "로컬 영구 데이터 적재 실패", Toast.LENGTH_SHORT).show()
+                val newRecord = TravelRecord(
+                    place = place,
+                    visitDate = date,
+                    memo = memo,
+                    photoUri = photoUriStr,
+                    hashtag = generatedHashtag
+                )
+
+                val insertId = dbHelper.insertRecord(newRecord)
+                if (insertId != -1L) {
+                    Toast.makeText(this, "여행 일기가 정상 보존되었습니다.", Toast.LENGTH_SHORT).show()
+                    finish()
+                } else {
+                    Toast.makeText(this, "로컬 영구 데이터 적재 실패", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
