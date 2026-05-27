@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import com.example.mobileproject.ui.DashboardFragment
 import com.example.mobileproject.ui.EditActivity
 import com.example.mobileproject.ui.HomeFragment
+import com.example.mobileproject.ui.InfoFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
@@ -41,6 +42,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.nav_dashboard -> {
                     switchFragment(DashboardFragment(), "Dashboard")
+                    true
+                }
+                R.id.nav_info -> {
+                    switchFragment(InfoFragment(), "Info")
                     true
                 }
                 else -> false
@@ -119,10 +124,10 @@ class MainActivity : AppCompatActivity() {
      */
     private fun updateBottomNavSelection() {
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-        if (currentFragment is HomeFragment) {
-            bottomNavigation.selectedItemId = R.id.nav_home
-        } else if (currentFragment is DashboardFragment) {
-            bottomNavigation.selectedItemId = R.id.nav_dashboard
+        when (currentFragment) {
+            is HomeFragment -> bottomNavigation.selectedItemId = R.id.nav_home
+            is DashboardFragment -> bottomNavigation.selectedItemId = R.id.nav_dashboard
+            is InfoFragment -> bottomNavigation.selectedItemId = R.id.nav_info
         }
     }
 }

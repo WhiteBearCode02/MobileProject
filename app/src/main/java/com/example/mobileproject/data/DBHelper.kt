@@ -88,8 +88,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삽입(Insert) 중 에러 발생", e)
             -1L
-        } finally {
-            db.close() // 자원 누수 방지
         }
     }
 
@@ -101,29 +99,24 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         val db = this@DBHelper.readableDatabase
         // [린트 오류 제어]: 쿼리 스트링 분리 결합 방식을 적용하여 RoomSql 식별 인터프리터 충돌을 우회 제어합니다.
         val selectQuery = "SELECT * FROM " + TABLE_NAME + " ORDER BY " + COLUMN_NO + " DESC"
-        var cursor: Cursor? = null
 
         try {
-            cursor = db.rawQuery(selectQuery, null)
-            cursor?.let {
-                if (it.moveToFirst()) {
+            db.rawQuery(selectQuery, null)?.use { cursor -> // [개선] cursor.use로 자동 리소스 관리
+                if (cursor.moveToFirst()) {
                     do {
-                        val no = it.getInt(it.getColumnIndexOrThrow(COLUMN_NO))
-                        val place = it.getString(it.getColumnIndexOrThrow(COLUMN_PLACE))
-                        val visitDate = it.getString(it.getColumnIndexOrThrow(COLUMN_VISIT_DATE))
-                        val memo = it.getString(it.getColumnIndexOrThrow(COLUMN_MEMO))
-                        val photoUri = it.getString(it.getColumnIndexOrThrow(COLUMN_PHOTO_URI))
-                        val hashtag = it.getString(it.getColumnIndexOrThrow(COLUMN_HASHTAG)) ?: ""
+                        val no = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_NO))
+                        val place = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PLACE))
+                        val visitDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_VISIT_DATE))
+                        val memo = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEMO))
+                        val photoUri = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PHOTO_URI))
+                        val hashtag = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_HASHTAG)) ?: ""
 
                         recordList.add(TravelRecord(no, place, visitDate, memo, photoUri, hashtag))
-                    } while (it.moveToNext())
+                    } while (cursor.moveToNext())
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "전체 데이터 조회(Select) 중 에러 발생", e)
-        } finally {
-            cursor?.close()
-            db?.close()
         }
         recordList
     }
@@ -134,28 +127,23 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
     suspend fun getRecordById(id: Int): TravelRecord? = withContext(Dispatchers.IO) {
         val db = this@DBHelper.readableDatabase
         val selectQuery = "SELECT * FROM " + TABLE_NAME + " WHERE " + COLUMN_NO + " = ?"
-        var cursor: Cursor? = null
         var record: TravelRecord? = null
 
         try {
-            cursor = db.rawQuery(selectQuery, arrayOf(id.toString()))
-            cursor?.let {
-                if (it.moveToFirst()) {
-                    val no = it.getInt(it.getColumnIndexOrThrow(COLUMN_NO))
-                    val place = it.getString(it.getColumnIndexOrThrow(COLUMN_PLACE))
-                    val visitDate = it.getString(it.getColumnIndexOrThrow(COLUMN_VISIT_DATE))
-                    val memo = it.getString(it.getColumnIndexOrThrow(COLUMN_MEMO))
-                    val photoUri = it.getString(it.getColumnIndexOrThrow(COLUMN_PHOTO_URI))
-                    val hashtag = it.getString(it.getColumnIndexOrThrow(COLUMN_HASHTAG)) ?: ""
+            db.rawQuery(selectQuery, arrayOf(id.toString()))?.use { cursor -> // [개선] cursor.use로 자동 리소스 관리
+                if (cursor.moveToFirst()) {
+                    val no = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_NO))
+                    val place = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PLACE))
+                    val visitDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_VISIT_DATE))
+                    val memo = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEMO))
+                    val photoUri = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PHOTO_URI))
+                    val hashtag = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_HASHTAG)) ?: ""
 
                     record = TravelRecord(no, place, visitDate, memo, photoUri, hashtag)
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "단일 데이터 조회(SelectById) 중 에러 발생", e)
-        } finally {
-            cursor?.close()
-            db?.close()
         }
         record
     }
@@ -178,8 +166,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 수정(Update) 중 에러 발생", e)
             0
-        } finally {
-            db.close()
         }
     }
 
@@ -193,8 +179,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삭제(Delete) 중 에러 발생", e)
             0
-        } finally {
-            db.close()
         }
     }
 }
