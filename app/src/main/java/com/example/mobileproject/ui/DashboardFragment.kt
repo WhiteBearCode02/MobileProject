@@ -8,8 +8,10 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.mobileproject.R
 import com.example.mobileproject.data.DBHelper
+import kotlinx.coroutines.launch
 
 /**
  * [DashboardFragment]: 영구 저장소(SQLite)에 누적된 여행 데이터를 역추적하여
@@ -67,17 +69,20 @@ class DashboardFragment : Fragment() {
      * 텍스트 레이어 캔버스에 실시간 투사하는 집계 알고리즘.
      */
     private fun calculateAndRefreshStatistics() {
-        try {
-            // DB 헬퍼 인터페이스를 통해 전체 적재된 행(Row) 어레이 추출
-            val allRecords = dbHelper.getAllRecords()
-            val totalSize = allRecords.size
+        // [개선]: 코루틴을 사용하여 백그라운드에서 DB 조회
+        lifecycleScope.launch {
+            try {
+                // DB 헬퍼 인터페이스를 통해 전체 적재된 행(Row) 어레이 추출
+                val allRecords = dbHelper.getAllRecords()
+                val totalSize = allRecords.size
 
-            // [데이터 바인딩]: 뷰 객체의 문자열 속성에 정형 연산 수치 직렬 투사
-            tvTotalCount.text = "총 ${totalSize}개의 기록이 보존 중입니다."
+                // [데이터 바인딩]: 뷰 객체의 문자열 속성에 정형 연산 수치 직렬 투사
+                tvTotalCount.text = "총 ${totalSize}개의 기록이 보존 중입니다."
 
-        } catch (e: Exception) {
-            tvTotalCount.text = "통계 연산 엔진 가동 실패"
-            Toast.makeText(requireContext(), "영속 데이터셋 디코딩 중 예외가 유발되었습니다.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                tvTotalCount.text = "통계 연산 엔진 가동 실패"
+                Toast.makeText(requireContext(), "영속 데이터셋 디코딩 중 예외가 유발되었습니다.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
