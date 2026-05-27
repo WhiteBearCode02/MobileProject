@@ -22,6 +22,7 @@ class DashboardFragment : Fragment() {
     private lateinit var tvTotalCount: TextView
     private lateinit var btnRefreshStats: Button
     private lateinit var btnAiSummary: Button
+    private lateinit var tvAiAnalysisResult: TextView // [추가] 분석 결과 TextView
     private lateinit var dbHelper: DBHelper
 
     override fun onCreateView(
@@ -36,6 +37,7 @@ class DashboardFragment : Fragment() {
         tvTotalCount = view.findViewById(R.id.tvTotalCount)
         btnRefreshStats = view.findViewById(R.id.btnRefreshStats)
         btnAiSummary = view.findViewById(R.id.btnAiSummary)
+        tvAiAnalysisResult = view.findViewById(R.id.tvAiAnalysisResult) // [추가] ID 바인딩
 
         setupListeners()
         return view
@@ -57,10 +59,51 @@ class DashboardFragment : Fragment() {
             Toast.makeText(requireContext(), "최신 여행 데이터 통계가 동기화되었습니다.", Toast.LENGTH_SHORT).show()
         }
 
-        // 2. AI 분석 요약 버튼 기능 구현: TFLite 및 캡스톤 프로젝트 연계용 추가 비즈니스 로직 입구 확보
+        // [개선] "여행분석" 버튼 기능 구현
         btnAiSummary.setOnClickListener {
-            // [추후 고도화 확장 영역]: 리사이클러뷰 전체 데이터셋을 풀링하여 AI 인사이트 칩을 도출하는 루틴 배치 스코프
-            Toast.makeText(requireContext(), "온디바이스 TFLite 트렌드 분석 엔진을 가동합니다.", Toast.LENGTH_SHORT).show()
+            analyzeTravelTrends()
+        }
+    }
+
+    /**
+     * [추가] 여행 기록의 해시태그를 분석하여 트렌드를 보여주는 기능
+     */
+    private fun analyzeTravelTrends() {
+        tvAiAnalysisResult.text = "AI가 여행 기록을 분석하고 있습니다..."
+
+        lifecycleScope.launch {
+            try {
+                val allRecords = dbHelper.getAllRecords()
+                if (allRecords.isEmpty()) {
+                    tvAiAnalysisResult.text = "분석할 여행 기록이 없습니다."
+                    return@launch
+                }
+
+                // 모든 해시태그를 분리하고, 각 태그의 빈도수를 계산
+                val tagCounts = allRecords
+                    .map { it.hashtag }
+                    .filter { it.isNotEmpty() }
+                    .flatMap { it.split(" ") }
+                    .groupingBy { it }
+                    .eachCount()
+
+                if (tagCounts.isEmpty()) {
+                    tvAiAnalysisResult.text = "분석할 AI 해시태그가 없습니다."
+                    return@launch
+                }
+
+                // 가장 많이 등장한 상위 3개 태그를 추출
+                val top3Tags = tagCounts.entries
+                    .sortedByDescending { it.value }
+                    .take(3)
+                    .joinToString(separator = ", ") { it.key }
+
+                tvAiAnalysisResult.text = "나의 여행 키워드는 [ ${top3Tags} ] 입니다."
+
+            } catch (e: Exception) {
+                tvAiAnalysisResult.text = "트렌드 분석 중 오류가 발생했습니다."
+                Toast.makeText(requireContext(), "데이터 분석 중 오류 발생", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
