@@ -13,6 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
 import com.example.mobileproject.R
 import com.example.mobileproject.data.DBHelper
@@ -39,6 +40,9 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var tvAiHashtagResult: TextView
     private lateinit var btnSelectPhoto: Button
     private lateinit var btnSave: Button
+
+    // [툴바 컴포넌트 메모리 포인터 확보]
+    private lateinit var toolbarEdit: Toolbar
 
     private lateinit var dbHelper: DBHelper
     private lateinit var imageClassifier: FoodImageClassifier
@@ -86,8 +90,11 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
             isEditMode = true
         }
 
-        // [뒤로 가기 버튼 인프라 구현]: 액션바에 내장된 뒤로 가기 화살표 에셋을 동적 활성화하고 타이틀을 정합합니다.
+        // [커스텀 툴바 무결성 결합 파이프라인]
+        // NoActionBar 테마의 제약을 우회하기 위해 XML 내 툴바를 액티비티 윈도우 액션바로 강제 매핑합니다.
+        setSupportActionBar(toolbarEdit)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
         if (isEditMode) {
             supportActionBar?.title = "여행 기록 상세 조회"
         } else {
@@ -107,10 +114,8 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
         btnSelectPhoto = findViewById(R.id.btnSelectPhoto)
         btnSave = findViewById(R.id.btnSave)
 
-        // [상세 보기 모드 진입 시 UI 폼 초기 폴백 변경]
-        if (isEditMode) {
-            btnSave.text = "기록 수정하기"
-        }
+        // 커스텀 툴바 식별자 결합
+        toolbarEdit = findViewById(R.id.toolbarEdit)
     }
 
     /**
@@ -147,38 +152,40 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // [상세 조회 모드 복원 및 데이터 바인딩 파이프라인 가동]
         if (isEditMode) {
-            // 로컬 SQLite 저장소 코어에서 고유 식별 번호에 바인딩된 단일 튜플 역직렬화 추출
-            val record = dbHelper.getRecordById(recordNo)
-            if (record != null) {
-                // [오류 완전 수정]: TravelRecord 구조체의 실제 명세인 .memo 가변 속성을 바인딩하도록 정합 완료했습니다.
-                etPlace.setText(record.place)
-                etDate.setText(record.visitDate)
-                etMemo.setText(record.memo)
+            // [개선]: 코루틴을 사용하여 백그라운드에서 DB 조회
+            lifecycleScope.launch {
+                val record = dbHelper.getRecordById(recordNo)
+                if (record != null) {
+                    // [오류 완전 수정]: TravelRecord 구조체의 실제 명세인 .memo 가변 속성을 바인딩하도록 정합 완료했습니다.
+                    etPlace.setText(record.place)
+                    etDate.setText(record.visitDate)
+                    etMemo.setText(record.memo)
 
-                // AI 가산점 해시태그 보존 상태 문자열 복원 투사
-                generatedHashtag = record.hashtag
-                if (generatedHashtag.isNotEmpty()) {
-                    tvAiHashtagResult.text = "AI 분석 완료 태그: $generatedHashtag"
-                }
-
-                // 기기 내 이미지 자원 물리 경로(URI) 존재 유무 조건부 가시성 제어
-                if (record.photoUri.isNotEmpty()) {
-                    try {
-                        selectedPhotoUri = Uri.parse(record.photoUri)
-                        ivSelectedPhoto.visibility = View.VISIBLE
-                        ivSelectedPhoto.setImageURI(selectedPhotoUri)
-                    } catch (e: Exception) {
-                        ivSelectedPhoto.setImageResource(R.drawable.ic_launcher_background)
+                    // AI 가산점 해시태그 보존 상태 문자열 복원 투사
+                    generatedHashtag = record.hashtag
+                    if (generatedHashtag.isNotEmpty()) {
+                        tvAiHashtagResult.text = "AI 분석 완료 태그: $generatedHashtag"
                     }
-                }
 
-                // [구글 맵 상세 랜드마크 마킹 복원]
-                // 아키텍처 사양에 부합하도록 영구 저장되었던 여행지의 위경도 좌표 인덱스를 바인딩하여 렌더링 가동합니다.
-                // (현재 기획 스펙에 따라 디폴트 캠퍼스 타겟 매핑 후 확장 활용할 수 있도록 주입 정합)
-                moveMapToLocation(soonchunhyang, record.place)
-            } else {
-                Toast.makeText(this, "여행 일기 복원 파이프라인 해독 실패", Toast.LENGTH_SHORT).show()
-                moveMapToLocation(soonchunhyang, "순천향대학교")
+                    // 기기 내 이미지 자원 물리 경로(URI) 존재 유무 조건부 가시성 제어
+                    if (record.photoUri.isNotEmpty()) {
+                        try {
+                            selectedPhotoUri = Uri.parse(record.photoUri)
+                            ivSelectedPhoto.visibility = View.VISIBLE
+                            ivSelectedPhoto.setImageURI(selectedPhotoUri)
+                        } catch (e: Exception) {
+                            ivSelectedPhoto.setImageResource(R.drawable.ic_launcher_background)
+                        }
+                    }
+
+                    // [구글 맵 상세 랜드마크 마킹 복원]
+                    // 아키텍처 사양에 부합하도록 영구 저장되었던 여행지의 위경도 좌표 인덱스를 바인딩하여 렌더링 가동합니다.
+                    // (현재 기획 스펙에 따라 디폴트 캠퍼스 타겟 매핑 후 확장 활용할 수 있도록 주입 정합)
+                    moveMapToLocation(soonchunhyang, record.place)
+                } else {
+                    Toast.makeText(this@EditActivity, "여행 일기 복원 파이프라인 해독 실패", Toast.LENGTH_SHORT).show()
+                    moveMapToLocation(soonchunhyang, "순천향대학교")
+                }
             }
         } else {
             // 구글 맵 전용 렌더링 파이프라인으로 지리 좌표 토스
@@ -219,45 +226,53 @@ class EditActivity : AppCompatActivity(), OnMapReadyCallback {
             val memo = etMemo.text.toString().trim()
             val photoUriStr = selectedPhotoUri?.toString() ?: ""
 
-            if (place.isEmpty() || date.isEmpty()) {
-                Toast.makeText(this, "여행지명과 날짜는 필수 입력 사항입니다.", Toast.LENGTH_SHORT).show()
+            // [개선]: 사용자 입력 값 유효성 검사 강화
+            if (place.isEmpty()) {
+                etPlace.error = "여행지 이름을 입력해주세요."
+                return@setOnClickListener
+            }
+            if (date.isEmpty()){
+                etDate.error = "방문 날짜를 입력해주세요."
                 return@setOnClickListener
             }
 
-            // [런타임 분기 조건절 확장 수립]: 기존 데이터 수정(UPDATE)과 신규 데이터 적재(INSERT) 트랜잭션 선별 제어
-            if (isEditMode) {
-                val updatedRecord = TravelRecord(
-                    no = recordNo, // 데이터베이스 주키 인덱스를 안전 바인딩하여 덮어쓰기 무결성 가동
-                    place = place,
-                    visitDate = date,
-                    memo = memo,
-                    photoUri = photoUriStr,
-                    hashtag = generatedHashtag
-                )
+            // [개선]: 코루틴을 사용하여 백그라운드에서 DB 작업 수행
+            lifecycleScope.launch {
+                // [런타임 분기 조건절 확장 수립]: 기존 데이터 수정(UPDATE)과 신규 데이터 적재(INSERT) 트랜잭션 선별 제어
+                if (isEditMode) {
+                    val updatedRecord = TravelRecord(
+                        no = recordNo, // 데이터베이스 주키 인덱스를 안전 바인딩하여 덮어쓰기 무결성 가동
+                        place = place,
+                        visitDate = date,
+                        memo = memo,
+                        photoUri = photoUriStr,
+                        hashtag = generatedHashtag
+                    )
 
-                // DBHelper 스코프 내 UPDATE 트랜잭션 구동 수행
-                val updateRows = dbHelper.updateRecord(updatedRecord)
-                if (updateRows > 0) {
-                    Toast.makeText(this, "여행 일기가 정상 수정되었습니다.", Toast.LENGTH_SHORT).show()
-                    finish()
+                    // DBHelper 스코프 내 UPDATE 트랜잭션 구동 수행
+                    val updateRows = dbHelper.updateRecord(updatedRecord)
+                    if (updateRows > 0) {
+                        Toast.makeText(this@EditActivity, "여행 일기가 정상 수정되었습니다.", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this@EditActivity, "로컬 영구 데이터 갱신 연산 실패", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    Toast.makeText(this, "로컬 영구 데이터 갱신 연산 실패", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                val newRecord = TravelRecord(
-                    place = place,
-                    visitDate = date,
-                    memo = memo,
-                    photoUri = photoUriStr,
-                    hashtag = generatedHashtag
-                )
+                    val newRecord = TravelRecord(
+                        place = place,
+                        visitDate = date,
+                        memo = memo,
+                        photoUri = photoUriStr,
+                        hashtag = generatedHashtag
+                    )
 
-                val insertId = dbHelper.insertRecord(newRecord)
-                if (insertId != -1L) {
-                    Toast.makeText(this, "여행 일기가 정상 보존되었습니다.", Toast.LENGTH_SHORT).show()
-                    finish()
-                } else {
-                    Toast.makeText(this, "로컬 영구 데이터 적재 실패", Toast.LENGTH_SHORT).show()
+                    val insertId = dbHelper.insertRecord(newRecord)
+                    if (insertId != -1L) {
+                        Toast.makeText(this@EditActivity, "여행 일기가 정상 보존되었습니다.", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this@EditActivity, "로컬 영구 데이터 적재 실패", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

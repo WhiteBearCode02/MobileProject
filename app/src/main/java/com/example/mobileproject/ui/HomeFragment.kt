@@ -6,14 +6,19 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mobileproject.R
 import com.example.mobileproject.data.DBHelper
 import com.example.mobileproject.data.TravelRecord
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import kotlinx.coroutines.launch
 
 /**
  * [HomeFragment]: 저장된 로컬 여행 기록 리스트를 화면에 드로잉하고,
@@ -25,6 +30,8 @@ class HomeFragment : Fragment() {
     private lateinit var fabAddRecord: FloatingActionButton
     private lateinit var travelAdapter: TravelAdapter
     private lateinit var dbHelper: DBHelper
+    private lateinit var progressBar: ProgressBar
+    private lateinit var tvEmptyList: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,6 +42,8 @@ class HomeFragment : Fragment() {
         dbHelper = DBHelper(requireContext())
         rvTravelList = view.findViewById(R.id.rvTravelList)
         fabAddRecord = view.findViewById(R.id.fabAddRecord)
+        progressBar = view.findViewById(R.id.progressBar)
+        tvEmptyList = view.findViewById(R.id.tvEmptyList)
 
         setupRecyclerView()
         setupButtons()
@@ -62,7 +71,6 @@ class HomeFragment : Fragment() {
         rvTravelList.layoutManager = LinearLayoutManager(requireContext())
 
         travelAdapter = TravelAdapter(
-            records = emptyList(),
             onItemClick = { record ->
                 // [상세 보기 화면 전환 기능 핵심 지점]: 클릭한 아이템의 고유 DB 식별자(no)를 인텐트에 바인딩
                 val targetNo = record.no
@@ -91,12 +99,15 @@ class HomeFragment : Fragment() {
             setPositiveButton("삭제") { dialog, _ ->
                 val targetNo = record.no
                 if (targetNo != null) {
-                    val deleteResult = dbHelper.deleteRecord(targetNo)
-                    if (deleteResult > 0) {
-                        Toast.makeText(requireContext(), "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
-                        loadTravelRecords()
-                    } else {
-                        Toast.makeText(requireContext(), "데이터베이스 제거 연산 실패", Toast.LENGTH_SHORT).show()
+                    // [개선]: 코루틴을 사용하여 백그라운드에서 DB 삭제
+                    lifecycleScope.launch {
+                        val deleteResult = dbHelper.deleteRecord(targetNo)
+                        if (deleteResult > 0) {
+                            Toast.makeText(requireContext(), "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                            loadTravelRecords() // 목록 새로고침
+                        } else {
+                            Toast.makeText(requireContext(), "데이터베이스 제거 연산 실패", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
                 dialog.dismiss()
@@ -109,15 +120,27 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadTravelRecords() {
-        try {
-            val records = dbHelper.getAllRecords()
-            if (records.isEmpty()) {
-                travelAdapter.updateData(emptyList())
-            } else {
-                travelAdapter.updateData(records)
+        progressBar.isVisible = true
+        rvTravelList.isVisible = false
+        tvEmptyList.isVisible = false
+
+        lifecycleScope.launch {
+            try {
+                val records = dbHelper.getAllRecords()
+                if (records.isEmpty()) {
+                    tvEmptyList.isVisible = true
+                    rvTravelList.isVisible = false
+                    travelAdapter.submitList(emptyList())
+                } else {
+                    tvEmptyList.isVisible = false
+                    rvTravelList.isVisible = true
+                    travelAdapter.submitList(records)
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "데이터 저장소 로드 중 심각한 예외가 유발되었습니다.", Toast.LENGTH_SHORT).show()
+            } finally {
+                progressBar.isVisible = false
             }
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "데이터 저장소 로드 중 심각한 예외가 유발되었습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 }

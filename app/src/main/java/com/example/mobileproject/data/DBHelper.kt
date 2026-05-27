@@ -6,6 +6,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * SQLiteOpenHelper를 상속받아 여행 기록의 생성, 조회, 수정, 삭제(CRUD)를 직접 처리하는 클래스
@@ -71,8 +73,8 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
     /**
      * [CREATE] 새로운 여행 기록을 DB에 저장합니다.
      */
-    fun insertRecord(record: TravelRecord): Long {
-        val db = this.writableDatabase
+    suspend fun insertRecord(record: TravelRecord): Long = withContext(Dispatchers.IO) {
+        val db = this@DBHelper.writableDatabase
         val values = ContentValues().apply {
             put(COLUMN_PLACE, record.place)
             put(COLUMN_VISIT_DATE, record.visitDate)
@@ -81,7 +83,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             put(COLUMN_HASHTAG, record.hashtag)
         }
 
-        return try {
+        try {
             db.insert(TABLE_NAME, null, values)
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삽입(Insert) 중 에러 발생", e)
@@ -94,9 +96,9 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
     /**
      * [READ] DB에 저장된 모든 여행 기록 목록을 최신순으로 조회합니다.
      */
-    fun getAllRecords(): List<TravelRecord> {
+    suspend fun getAllRecords(): List<TravelRecord> = withContext(Dispatchers.IO) {
         val recordList = mutableListOf<TravelRecord>()
-        val db = this.readableDatabase
+        val db = this@DBHelper.readableDatabase
         // [린트 오류 제어]: 쿼리 스트링 분리 결합 방식을 적용하여 RoomSql 식별 인터프리터 충돌을 우회 제어합니다.
         val selectQuery = "SELECT * FROM " + TABLE_NAME + " ORDER BY " + COLUMN_NO + " DESC"
         var cursor: Cursor? = null
@@ -120,16 +122,17 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "전체 데이터 조회(Select) 중 에러 발생", e)
         } finally {
+            cursor?.close()
             db?.close()
         }
-        return recordList
+        recordList
     }
 
     /**
      * [READ] 특정 고유 식별 번호(id) 조건에 부합하는 단일 행 레코드를 쿼리하여 도메인 모델로 역직렬화합니다.
      */
-    fun getRecordById(id: Int): TravelRecord? {
-        val db = this.readableDatabase
+    suspend fun getRecordById(id: Int): TravelRecord? = withContext(Dispatchers.IO) {
+        val db = this@DBHelper.readableDatabase
         val selectQuery = "SELECT * FROM " + TABLE_NAME + " WHERE " + COLUMN_NO + " = ?"
         var cursor: Cursor? = null
         var record: TravelRecord? = null
@@ -151,16 +154,17 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "단일 데이터 조회(SelectById) 중 에러 발생", e)
         } finally {
+            cursor?.close()
             db?.close()
         }
-        return record
+        record
     }
 
     /**
      * [UPDATE] 기존 여행 기록의 수정 사항을 반영합니다.
      */
-    fun updateRecord(record: TravelRecord): Int {
-        val db = this.writableDatabase
+    suspend fun updateRecord(record: TravelRecord): Int = withContext(Dispatchers.IO) {
+        val db = this@DBHelper.writableDatabase
         val values = ContentValues().apply {
             put(COLUMN_PLACE, record.place)
             put(COLUMN_VISIT_DATE, record.visitDate)
@@ -169,7 +173,7 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             put(COLUMN_HASHTAG, record.hashtag)
         }
 
-        return try {
+        try {
             db.update(TABLE_NAME, values, "$COLUMN_NO = ?", arrayOf(record.no.toString()))
         } catch (e: Exception) {
             Log.e(TAG, "데이터 수정(Update) 중 에러 발생", e)
@@ -182,9 +186,9 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
     /**
      * [DELETE] 특정 번호의 여행 데이터를 삭제합니다.
      */
-    fun deleteRecord(no: Int): Int {
-        val db = this.writableDatabase
-        return try {
+    suspend fun deleteRecord(no: Int): Int = withContext(Dispatchers.IO) {
+        val db = this@DBHelper.writableDatabase
+        try {
             db.delete(TABLE_NAME, "$COLUMN_NO = ?", arrayOf(no.toString()))
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삭제(Delete) 중 에러 발생", e)
