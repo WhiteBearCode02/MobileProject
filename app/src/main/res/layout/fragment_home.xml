@@ -61,12 +61,3 @@
         app:rippleColor="#FFFFFF" />
 
 </FrameLayout>
-        android:layout_gravity="bottom|end"
-        android:layout_margin="24dp"
-        android:contentDescription="여행 기록 추가 버튼"
-        android:src="@android:drawable/ic_input_add"
-        app:backgroundTint="#007AFF"
-        app:fabSize="normal"
-        app:rippleColor="#FFFFFF" />
-
-</FrameLayout>
