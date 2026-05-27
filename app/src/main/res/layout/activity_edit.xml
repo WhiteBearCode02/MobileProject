@@ -8,82 +8,96 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/etPlace"
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarEdit"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:titleTextColor="#FFFFFF"
+            app:navigationIcon="@androidx.appcompat.drawable.abc_ic_ab_back_material" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="어디로 여행을 다녀오셨나요? (예: 순천향대학교)"
-            android:inputType="text"
-            android:textSize="16sp" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <EditText
-            android:id="@+id/etDate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="방문 날짜 (예: 2026-06-01)"
-            android:inputType="date" />
+            <EditText
+                android:id="@+id/etPlace"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="어디로 여행을 다녀오셨나요? (예: 순천향대학교)"
+                android:inputType="text"
+                android:textSize="16sp" />
 
-        <EditText
-            android:id="@+id/etMemo"
-            android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:layout_marginTop="12dp"
-            android:hint="그곳에서의 추억이나 맛집 정보를 남겨보세요."
-            android:gravity="top"
-            android:inputType="textMultiLine" />
+            <EditText
+                android:id="@+id/etDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="방문 날짜 (예: 2026-06-01)"
+                android:inputType="date" />
 
-        <Button
-            android:id="@+id/btnSelectPhoto"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="카메라/갤러리에서 사진 가져오기"
-            android:backgroundTint="#007AFF" />
+            <EditText
+                android:id="@+id/etMemo"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_marginTop="12dp"
+                android:hint="그곳에서의 추억이나 맛집 정보를 남겨보세요."
+                android:gravity="top"
+                android:inputType="textMultiLine" />
 
-        <ImageView
-            android:id="@+id/ivSelectedPhoto"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:layout_marginTop="8dp"
-            android:scaleType="centerCrop"
-            android:visibility="gone" />
+            <Button
+                android:id="@+id/btnSelectPhoto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="카메라/갤러리에서 사진 가져오기"
+                android:backgroundTint="#007AFF" />
 
-        <TextView
-            android:id="@+id/tvAiHashtagResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#007AFF"
-            android:textStyle="bold|italic"
-            android:text="" />
+            <ImageView
+                android:id="@+id/ivSelectedPhoto"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="8dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="여행 위치 확인 (Google Maps API)"
-            android:textStyle="bold"
-            android:textColor="#222222" />
+            <TextView
+                android:id="@+id/tvAiHashtagResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="#007AFF"
+                android:textStyle="bold|italic"
+                android:text="" />
 
-        <fragment
-            android:id="@+id/mapFragment"
-            android:name="com.google.android.gms.maps.SupportMapFragment"
-            android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:layout_marginTop="8dp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="여행 위치 확인 (Google Maps API)"
+                android:textStyle="bold"
+                android:textColor="#222222" />
 
-        <Button
-            android:id="@+id/btnSave"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="기록 저장하기"
-            android:backgroundTint="#4CD964"
-            android:textSize="16sp" />
+            <fragment
+                android:id="@+id/mapFragment"
+                android:name="com.google.android.gms.maps.SupportMapFragment"
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:layout_marginTop="8dp" />
 
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="기록 저장하기"
+                android:backgroundTint="#4CD964"
+                android:textSize="16sp" />
+
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

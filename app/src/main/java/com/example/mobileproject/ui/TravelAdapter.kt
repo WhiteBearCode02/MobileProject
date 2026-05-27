@@ -5,25 +5,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mobileproject.R
 import com.example.mobileproject.data.TravelRecord
 
 /**
- * [TravelAdapter]: 영구 적재된 여행 기록 데이터 리스트를 리사이클러뷰 뷰포트에 직렬 바인딩하고,
- * 교수님 필수 채점 기준인 고성능 뷰홀더 패턴 및 다중 제스처 리스너 인터페이스를 통제하는 어댑터 계층.
+ * [TravelAdapter]: [개선] ListAdapter와 DiffUtil을 사용하여 RecyclerView의 성능을 최적화합니다.
+ * 데이터 변경 시 전체 목록을 새로고침하는 대신, 변경된 항목만 지능적으로 업데이트하여 효율성을 극대화합니다.
  */
 class TravelAdapter(
-    private var records: List<TravelRecord>,
     private val onItemClick: (TravelRecord) -> Unit,         // 항목 클릭 리스너 (상세 전이 브릿지)
-    private val onItemLongClick: (TravelRecord, View) -> Unit // 항목 롱클릭 리스너 (다이얼로그 소거 브릿지)
-) : RecyclerView.Adapter<TravelAdapter.TravelViewHolder>() {
-
-    // 외부에서 로컬 DB 갱신 스케줄러 가동 시 새로운 리스트 데이터셋으로 동적 스왑하는 메서드
-    fun updateData(newRecords: List<TravelRecord>) {
-        this.records = newRecords
-        notifyDataSetChanged() // 가상 파일 메모리 테이블 갱신 유도
-    }
+    private val onItemLongClick: (TravelRecord, View) -> Unit // 항목 롱클릭 리스너 (다이얼로그 소거 블릿지)
+) : ListAdapter<TravelRecord, TravelAdapter.TravelViewHolder>(TravelDiffCallback()) {
 
     // item_travel 레이아웃 인플레이션 및 원자적 뷰홀더 인스턴스 팩토리 가동 시점
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TravelViewHolder {
@@ -34,11 +29,8 @@ class TravelAdapter(
 
     // 생성된 고성능 뷰홀더에 물리적 배열 인덱스(position) 데이터를 결합 인입하는 시점
     override fun onBindViewHolder(holder: TravelViewHolder, position: Int) {
-        holder.bind(records[position], onItemClick, onItemLongClick)
+        holder.bind(getItem(position), onItemClick, onItemLongClick)
     }
-
-    // 전체 어레이 데이터셋의 원소 총 개수를 반환
-    override fun getItemCount(): Int = records.size
 
     /**
      * [TravelViewHolder]: 개별 메모리 셀 뷰의 컴포넌트 포인터를 캐싱 보존하여
@@ -76,6 +68,22 @@ class TravelAdapter(
                 onItemLongClick(record, itemView)
                 true // [이벤트 버스 소비]: 하부 터치 컨텍스트 체인을 차단하여 일반 온클릭과 롱클릭이 경합 오동작하는 현상을 원천 방어
             }
+        }
+    }
+
+    /**
+     * [개선] DiffUtil.ItemCallback을 구현하여 두 TravelRecord 객체 간의 차이를 계산합니다.
+     * 이를 통해 ListAdapter가 어떤 항목이 추가, 제거 또는 변경되었는지 효율적으로 판단할 수 있습니다.
+     */
+    class TravelDiffCallback : DiffUtil.ItemCallback<TravelRecord>() {
+        override fun areItemsTheSame(oldItem: TravelRecord, newItem: TravelRecord): Boolean {
+            // 각 아이템의 고유 ID(no)를 비교하여 동일한 아이템인지 확인
+            return oldItem.no == newItem.no
+        }
+
+        override fun areContentsTheSame(oldItem: TravelRecord, newItem: TravelRecord): Boolean {
+            // 아이템의 내용(데이터)이 동일한지 확인
+            return oldItem == newItem
         }
     }
 }
