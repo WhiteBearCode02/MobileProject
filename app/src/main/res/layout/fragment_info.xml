@@ -27,7 +27,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="개발자: 홍길동"
+        android:text="개발자: 이현준"
         android:textSize="18sp"
         android:textColor="#43483E" />
 
@@ -35,7 +35,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="이 앱은 기말 프로젝트 과제용으로 제작되었습니다."
+        android:text="이 앱은 여행기록 앱 프로젝트입니다."
         android:gravity="center"
         android:textSize="16sp"
         android:textColor="#666666" />
