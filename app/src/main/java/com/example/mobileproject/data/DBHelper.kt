@@ -88,8 +88,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삽입(Insert) 중 에러 발생", e)
             -1L
-        } finally {
-            db.close() // 자원 누수 방지
         }
     }
 
@@ -123,7 +121,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             Log.e(TAG, "전체 데이터 조회(Select) 중 에러 발생", e)
         } finally {
             cursor?.close()
-            db?.close()
         }
         recordList
     }
@@ -155,7 +152,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
             Log.e(TAG, "단일 데이터 조회(SelectById) 중 에러 발생", e)
         } finally {
             cursor?.close()
-            db?.close()
         }
         record
     }
@@ -178,8 +174,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 수정(Update) 중 에러 발생", e)
             0
-        } finally {
-            db.close()
         }
     }
 
@@ -193,8 +187,6 @@ class DBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null
         } catch (e: Exception) {
             Log.e(TAG, "데이터 삭제(Delete) 중 에러 발생", e)
             0
-        } finally {
-            db.close()
         }
     }
 }
